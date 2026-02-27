@@ -1,0 +1,32 @@
+name: Code Generation Check
+
+on:
+  pull_request:
+    paths:
+      - "pkg/domain/interfaces.go"
+      - "pkg/domain/mock/**"
+      - ".github/workflows/codegen.yml"
+
+jobs:
+  check-codegen:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: "go.mod"
+          cache: true
+          cache-dependency-path: go.sum
+
+      - name: Install moq
+        run: go install github.com/matryer/moq@latest
+
+      - name: Generate mock files
+        run: go generate ./pkg/domain/...
+
+      - name: Check for uncommitted changes
+        run: |
+          git diff --exit-code || (echo "Error: Generated code is out of sync. Please run 'go generate ./pkg/domain/...' and commit the changes." && exit 1)
