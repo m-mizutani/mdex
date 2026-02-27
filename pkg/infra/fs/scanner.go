@@ -65,9 +65,10 @@ func (s *Scanner) ScanMarkdownFiles(baseDir string) ([]domain.MarkdownFile, erro
 		hash := sha256.Sum256(content)
 
 		files = append(files, domain.MarkdownFile{
-			RelPath: relPath,
-			Content: content,
-			Hash:    hex.EncodeToString(hash[:]),
+			RelPath:  relPath,
+			FilePath: path,
+			Content:  content,
+			Hash:     hex.EncodeToString(hash[:]),
 		})
 
 		return nil
@@ -75,6 +76,51 @@ func (s *Scanner) ScanMarkdownFiles(baseDir string) ([]domain.MarkdownFile, erro
 
 	if walkErr != nil {
 		return nil, walkErr
+	}
+
+	return files, nil
+}
+
+// ReadMarkdownFiles reads the specified Markdown files and returns them.
+func (s *Scanner) ReadMarkdownFiles(paths []string) ([]domain.MarkdownFile, error) {
+	var files []domain.MarkdownFile
+
+	for _, p := range paths {
+		absPath, err := filepath.Abs(p)
+		if err != nil {
+			return nil, goerr.Wrap(err, "resolving absolute path", goerr.V("path", p))
+		}
+
+		info, err := os.Stat(absPath)
+		if err != nil {
+			return nil, goerr.Wrap(err, "stat file", goerr.V("path", absPath))
+		}
+
+		if info.IsDir() {
+			return nil, goerr.New("expected a file but got a directory", goerr.V("path", absPath))
+		}
+
+		if !strings.HasSuffix(info.Name(), ".md") {
+			return nil, goerr.New("expected a markdown file (.md)", goerr.V("path", absPath))
+		}
+
+		content, err := os.ReadFile(absPath) // #nosec G304 -- path comes from user-specified file arguments
+		if err != nil {
+			return nil, goerr.Wrap(err, "reading file", goerr.V("path", absPath))
+		}
+
+		hash := sha256.Sum256(content)
+
+		// Use the user-supplied path (cleaned) as RelPath to avoid collisions
+		// when files from different directories share the same basename.
+		relPath := filepath.ToSlash(filepath.Clean(p))
+
+		files = append(files, domain.MarkdownFile{
+			RelPath:  relPath,
+			FilePath: absPath,
+			Content:  content,
+			Hash:     hex.EncodeToString(hash[:]),
+		})
 	}
 
 	return files, nil

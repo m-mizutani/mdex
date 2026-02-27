@@ -4,6 +4,8 @@ package domain
 type MarkdownFile struct {
 	// RelPath is the normalized relative path (using '/' separator) from the base directory.
 	RelPath string
+	// FilePath is the absolute path on disk (used for resolving relative image references).
+	FilePath string
 	// Content is the raw content of the Markdown file.
 	Content []byte
 	// Hash is the SHA-256 hex digest of the file content.
@@ -55,6 +57,7 @@ type ExportConfig struct {
 	NotionDatabaseID string
 	NotionToken      string
 	Dir              string
+	Files            []string
 	PathProperty     string
 	HashProperty     string
 	TagsProperty     string

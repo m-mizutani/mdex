@@ -18,6 +18,9 @@ var _ domain.FileScanner = &FileScannerMock{}
 //
 //		// make and configure a mocked domain.FileScanner
 //		mockedFileScanner := &FileScannerMock{
+//			ReadMarkdownFilesFunc: func(paths []string) ([]domain.MarkdownFile, error) {
+//				panic("mock out the ReadMarkdownFiles method")
+//			},
 //			ScanMarkdownFilesFunc: func(baseDir string) ([]domain.MarkdownFile, error) {
 //				panic("mock out the ScanMarkdownFiles method")
 //			},
@@ -28,18 +31,59 @@ var _ domain.FileScanner = &FileScannerMock{}
 //
 //	}
 type FileScannerMock struct {
+	// ReadMarkdownFilesFunc mocks the ReadMarkdownFiles method.
+	ReadMarkdownFilesFunc func(paths []string) ([]domain.MarkdownFile, error)
+
 	// ScanMarkdownFilesFunc mocks the ScanMarkdownFiles method.
 	ScanMarkdownFilesFunc func(baseDir string) ([]domain.MarkdownFile, error)
 
 	// calls tracks calls to the methods.
 	calls struct {
+		// ReadMarkdownFiles holds details about calls to the ReadMarkdownFiles method.
+		ReadMarkdownFiles []struct {
+			// Paths is the paths argument value.
+			Paths []string
+		}
 		// ScanMarkdownFiles holds details about calls to the ScanMarkdownFiles method.
 		ScanMarkdownFiles []struct {
 			// BaseDir is the baseDir argument value.
 			BaseDir string
 		}
 	}
+	lockReadMarkdownFiles sync.RWMutex
 	lockScanMarkdownFiles sync.RWMutex
+}
+
+// ReadMarkdownFiles calls ReadMarkdownFilesFunc.
+func (mock *FileScannerMock) ReadMarkdownFiles(paths []string) ([]domain.MarkdownFile, error) {
+	if mock.ReadMarkdownFilesFunc == nil {
+		panic("FileScannerMock.ReadMarkdownFilesFunc: method is nil but FileScanner.ReadMarkdownFiles was just called")
+	}
+	callInfo := struct {
+		Paths []string
+	}{
+		Paths: paths,
+	}
+	mock.lockReadMarkdownFiles.Lock()
+	mock.calls.ReadMarkdownFiles = append(mock.calls.ReadMarkdownFiles, callInfo)
+	mock.lockReadMarkdownFiles.Unlock()
+	return mock.ReadMarkdownFilesFunc(paths)
+}
+
+// ReadMarkdownFilesCalls gets all the calls that were made to ReadMarkdownFiles.
+// Check the length with:
+//
+//	len(mockedFileScanner.ReadMarkdownFilesCalls())
+func (mock *FileScannerMock) ReadMarkdownFilesCalls() []struct {
+	Paths []string
+} {
+	var calls []struct {
+		Paths []string
+	}
+	mock.lockReadMarkdownFiles.RLock()
+	calls = mock.calls.ReadMarkdownFiles
+	mock.lockReadMarkdownFiles.RUnlock()
+	return calls
 }
 
 // ScanMarkdownFiles calls ScanMarkdownFilesFunc.

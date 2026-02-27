@@ -33,10 +33,22 @@ func (uc *ExportUseCase) Execute(ctx context.Context, config domain.ExportConfig
 	logger := logging.From(ctx)
 
 	// 1. Scan local markdown files
-	logger.Info("scanning markdown files", "dir", config.Dir)
-	files, err := uc.fileScanner.ScanMarkdownFiles(config.Dir)
-	if err != nil {
-		return goerr.Wrap(err, "scanning markdown files", goerr.V("dir", config.Dir))
+	var (
+		files []domain.MarkdownFile
+		err   error
+	)
+	if len(config.Files) > 0 {
+		logger.Info("reading markdown files", "files", config.Files)
+		files, err = uc.fileScanner.ReadMarkdownFiles(config.Files)
+		if err != nil {
+			return goerr.Wrap(err, "reading markdown files", goerr.V("files", config.Files))
+		}
+	} else {
+		logger.Info("scanning markdown files", "dir", config.Dir)
+		files, err = uc.fileScanner.ScanMarkdownFiles(config.Dir)
+		if err != nil {
+			return goerr.Wrap(err, "scanning markdown files", goerr.V("dir", config.Dir))
+		}
 	}
 	logger.Info("found markdown files", "count", len(files))
 
@@ -145,7 +157,7 @@ func (uc *ExportUseCase) createPage(ctx context.Context, config domain.ExportCon
 	}
 
 	// Convert markdown body (without frontmatter) to Notion blocks
-	blocks, err := converter.Convert(body, filepath.Join(config.Dir, file.RelPath))
+	blocks, err := converter.Convert(body, file.FilePath)
 	if err != nil {
 		return goerr.Wrap(err, "converting markdown", goerr.V("path", file.RelPath))
 	}

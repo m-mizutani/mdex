@@ -5,6 +5,7 @@ import (
 	"log/slog"
 	"os"
 
+	"github.com/m-mizutani/goerr/v2"
 	"github.com/m-mizutani/mdex/pkg/domain"
 	"github.com/m-mizutani/mdex/pkg/infra/fs"
 	"github.com/m-mizutani/mdex/pkg/infra/notion"
@@ -19,6 +20,7 @@ func newExportCommand() *cli.Command {
 		notionDatabaseID string
 		notionToken      string
 		dir              string
+		files            []string
 		pathProperty     string
 		hashProperty     string
 		tagsProperty     string
@@ -55,7 +57,13 @@ func newExportCommand() *cli.Command {
 				Usage:       "Directory containing Markdown files",
 				Sources:     cli.EnvVars("MDEX_DIR"),
 				Destination: &dir,
-				Required:    true,
+			},
+			&cli.StringSliceFlag{
+				Name:        "file",
+				Aliases:     []string{"f"},
+				Usage:       "Markdown file(s) to export (can be specified multiple times)",
+				Sources:     cli.EnvVars("MDEX_FILES"),
+				Destination: &files,
 			},
 			&cli.StringFlag{
 				Name:        "path-property",
@@ -112,6 +120,13 @@ func newExportCommand() *cli.Command {
 			},
 		},
 		Action: func(ctx context.Context, _ *cli.Command) error {
+			if dir == "" && len(files) == 0 {
+				return goerr.New("either --dir or --file must be specified")
+			}
+			if dir != "" && len(files) > 0 {
+				return goerr.New("--dir and --file cannot be used together")
+			}
+
 			// Setup logger
 			logger := logging.New(os.Stderr, slog.LevelInfo)
 			ctx = logging.With(ctx, logger)
@@ -126,6 +141,7 @@ func newExportCommand() *cli.Command {
 				NotionDatabaseID: notionDatabaseID,
 				NotionToken:      notionToken,
 				Dir:              dir,
+				Files:            files,
 				PathProperty:     pathProperty,
 				HashProperty:     hashProperty,
 				TagsProperty:     tagsProperty,
