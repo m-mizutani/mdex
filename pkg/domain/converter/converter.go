@@ -222,11 +222,6 @@ func convertList(n *ast.List, source []byte, mdFilePath string) []Block {
 }
 
 func convertListItem(item *ast.ListItem, list *ast.List, source []byte, mdFilePath string) []Block {
-	// Check if it's a task list item
-	if cb, ok := item.FirstChild().(*ast.TextBlock); ok {
-		_ = cb
-	}
-
 	// Collect rich text from the first paragraph/text block
 	var richTexts []RichText
 	var childBlocks []Block
@@ -407,9 +402,9 @@ func mapLanguage(lang string) string {
 		"plaintext":  "plain text",
 		"text":       "plain text",
 		"txt":        "plain text",
-		"hcl":        "plain text",
-		"terraform":  "plain text",
-		"tf":         "plain text",
+		"hcl":        "terraform",
+		"terraform":  "terraform",
+		"tf":         "terraform",
 		"graphql":    "graphql",
 		"r":          "r",
 		"elixir":     "elixir",

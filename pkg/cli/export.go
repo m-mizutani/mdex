@@ -5,7 +5,6 @@ import (
 	"log/slog"
 	"os"
 
-	"github.com/m-mizutani/goerr/v2"
 	"github.com/m-mizutani/mdex/pkg/domain"
 	"github.com/m-mizutani/mdex/pkg/infra/fs"
 	"github.com/m-mizutani/mdex/pkg/infra/notion"
@@ -121,17 +120,6 @@ func newExportCommand() *cli.Command {
 			if dryRun {
 				ctx = dryrun.WithDryRun(ctx)
 				logging.From(ctx).Info("dry-run mode enabled")
-			}
-
-			// Validate
-			if notionDatabaseID == "" {
-				return goerr.New("--notion-database-id is required")
-			}
-			if notionToken == "" {
-				return goerr.New("--notion-token is required")
-			}
-			if dir == "" {
-				return goerr.New("--dir is required")
 			}
 
 			config := domain.ExportConfig{

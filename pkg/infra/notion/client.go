@@ -280,7 +280,7 @@ func (c *Client) UploadFile(ctx context.Context, filename string, contentType st
 	}
 
 	sendReq, err := http.NewRequestWithContext(ctx, http.MethodPost,
-		fmt.Sprintf("%s/file_uploads/%s/send", baseURL, createResp.ID), &buf)
+		fmt.Sprintf("%s/file_uploads/%s/send", baseURL, createResp.ID), bytes.NewReader(buf.Bytes()))
 	if err != nil {
 		return "", goerr.Wrap(err, "creating send request")
 	}

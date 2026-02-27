@@ -126,7 +126,11 @@ func (uc *ExportUseCase) Execute(ctx context.Context, config domain.ExportConfig
 	}
 
 	if len(errs) > 0 {
-		return goerr.New(fmt.Sprintf("export completed with %d error(s)", len(errs)))
+		messages := make([]string, len(errs))
+		for i, e := range errs {
+			messages[i] = e.Error()
+		}
+		return goerr.New("export completed with errors", goerr.V("count", len(errs)), goerr.V("errors", messages))
 	}
 
 	logger.Info("export completed successfully")
