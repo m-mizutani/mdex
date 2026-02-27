@@ -91,7 +91,7 @@ func (s *Scanner) ReadMarkdownFiles(paths []string) ([]domain.MarkdownFile, erro
 			return nil, goerr.Wrap(err, "resolving absolute path", goerr.V("path", p))
 		}
 
-		info, err := os.Lstat(absPath)
+		info, err := os.Stat(absPath)
 		if err != nil {
 			return nil, goerr.Wrap(err, "stat file", goerr.V("path", absPath))
 		}
@@ -100,8 +100,8 @@ func (s *Scanner) ReadMarkdownFiles(paths []string) ([]domain.MarkdownFile, erro
 			return nil, goerr.New("expected a file but got a directory", goerr.V("path", absPath))
 		}
 
-		if info.Mode()&fs.ModeSymlink != 0 {
-			continue
+		if !strings.HasSuffix(info.Name(), ".md") {
+			return nil, goerr.New("expected a markdown file (.md)", goerr.V("path", absPath))
 		}
 
 		content, err := os.ReadFile(absPath) // #nosec G304 -- path comes from user-specified file arguments
@@ -111,8 +111,12 @@ func (s *Scanner) ReadMarkdownFiles(paths []string) ([]domain.MarkdownFile, erro
 
 		hash := sha256.Sum256(content)
 
+		// Use the user-supplied path (cleaned) as RelPath to avoid collisions
+		// when files from different directories share the same basename.
+		relPath := filepath.ToSlash(filepath.Clean(p))
+
 		files = append(files, domain.MarkdownFile{
-			RelPath:  filepath.Base(absPath),
+			RelPath:  relPath,
 			FilePath: absPath,
 			Content:  content,
 			Hash:     hex.EncodeToString(hash[:]),

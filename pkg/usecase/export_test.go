@@ -340,6 +340,32 @@ func TestExecuteWithDomain(t *testing.T) {
 	gt.S(t, nc.QueryDatabaseCalls()[0].DomainValue).Equal("my-project")
 }
 
+func TestExecuteWithFilesOption(t *testing.T) {
+	nc := newMockNotionClient()
+	fs := newMockFileScanner([]domain.MarkdownFile{
+		{RelPath: "docs/hello.md", FilePath: "/tmp/docs/hello.md", Content: []byte("# Hello"), Hash: "abc123"},
+	})
+
+	uc := usecase.NewExportUseCase(nc, fs)
+	config := domain.ExportConfig{
+		NotionDatabaseID: "db-id",
+		NotionToken:      "token",
+		Files:            []string{"/tmp/docs/hello.md"},
+		PathProperty:     "mdex_path",
+		HashProperty:     "mdex_hash",
+		TagsProperty:     "Tags",
+		CategoryProperty: "Category",
+	}
+
+	err := uc.Execute(context.Background(), config)
+	gt.NoError(t, err)
+	gt.A(t, nc.CreatePageCalls()).Length(1)
+
+	// Verify ReadMarkdownFiles was called instead of ScanMarkdownFiles
+	gt.A(t, fs.ReadMarkdownFilesCalls()).Length(1)
+	gt.A(t, fs.ScanMarkdownFilesCalls()).Length(0)
+}
+
 func TestExecuteWithoutDomain(t *testing.T) {
 	nc := newMockNotionClient()
 	fs := newMockFileScanner([]domain.MarkdownFile{

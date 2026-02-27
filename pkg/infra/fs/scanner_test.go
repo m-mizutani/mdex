@@ -85,3 +85,92 @@ func TestScanMarkdownFilesEmptyDir(t *testing.T) {
 	gt.NoError(t, err)
 	gt.A(t, files).Length(0)
 }
+
+func TestReadMarkdownFiles(t *testing.T) {
+	dir := setupTestDir(t)
+	scanner := fs.New()
+
+	paths := []string{
+		filepath.Join(dir, "readme.md"),
+		filepath.Join(dir, "subdir", "doc.md"),
+	}
+
+	files, err := scanner.ReadMarkdownFiles(paths)
+	gt.NoError(t, err)
+	gt.A(t, files).Length(2)
+
+	// Verify hash
+	expectedHash := sha256.Sum256([]byte("# Hello"))
+	gt.V(t, files[0].Hash).Equal(hex.EncodeToString(expectedHash[:]))
+
+	// Verify FilePath is set to absolute path
+	absPath, _ := filepath.Abs(paths[0])
+	gt.V(t, files[0].FilePath).Equal(absPath)
+}
+
+func TestReadMarkdownFilesRelPath(t *testing.T) {
+	dir := t.TempDir()
+	gt.NoError(t, os.MkdirAll(filepath.Join(dir, "a"), 0o755))
+	gt.NoError(t, os.MkdirAll(filepath.Join(dir, "b"), 0o755))
+	gt.NoError(t, os.WriteFile(filepath.Join(dir, "a", "doc.md"), []byte("# A"), 0o644))
+	gt.NoError(t, os.WriteFile(filepath.Join(dir, "b", "doc.md"), []byte("# B"), 0o644))
+
+	scanner := fs.New()
+	files, err := scanner.ReadMarkdownFiles([]string{
+		filepath.Join(dir, "a", "doc.md"),
+		filepath.Join(dir, "b", "doc.md"),
+	})
+	gt.NoError(t, err)
+	gt.A(t, files).Length(2)
+
+	// RelPaths should be distinct even though basenames are the same
+	gt.V(t, files[0].RelPath).NotEqual(files[1].RelPath)
+}
+
+func TestReadMarkdownFilesRejectsDirectory(t *testing.T) {
+	dir := t.TempDir()
+	scanner := fs.New()
+
+	_, err := scanner.ReadMarkdownFiles([]string{dir})
+	gt.Error(t, err)
+}
+
+func TestReadMarkdownFilesRejectsNonMarkdown(t *testing.T) {
+	dir := t.TempDir()
+	txtFile := filepath.Join(dir, "note.txt")
+	gt.NoError(t, os.WriteFile(txtFile, []byte("hello"), 0o644))
+
+	scanner := fs.New()
+	_, err := scanner.ReadMarkdownFiles([]string{txtFile})
+	gt.Error(t, err)
+}
+
+func TestReadMarkdownFilesFollowsSymlink(t *testing.T) {
+	dir := t.TempDir()
+	realFile := filepath.Join(dir, "real.md")
+	gt.NoError(t, os.WriteFile(realFile, []byte("# Real"), 0o644))
+
+	linkFile := filepath.Join(dir, "link.md")
+	gt.NoError(t, os.Symlink(realFile, linkFile))
+
+	scanner := fs.New()
+	files, err := scanner.ReadMarkdownFiles([]string{linkFile})
+	gt.NoError(t, err)
+	gt.A(t, files).Length(1)
+
+	expectedHash := sha256.Sum256([]byte("# Real"))
+	gt.V(t, files[0].Hash).Equal(hex.EncodeToString(expectedHash[:]))
+}
+
+func TestReadMarkdownFilesRejectsSymlinkToDirectory(t *testing.T) {
+	dir := t.TempDir()
+	subDir := filepath.Join(dir, "sub")
+	gt.NoError(t, os.MkdirAll(subDir, 0o755))
+
+	linkDir := filepath.Join(dir, "link-dir")
+	gt.NoError(t, os.Symlink(subDir, linkDir))
+
+	scanner := fs.New()
+	_, err := scanner.ReadMarkdownFiles([]string{linkDir})
+	gt.Error(t, err)
+}
