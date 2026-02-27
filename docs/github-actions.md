@@ -28,14 +28,15 @@ jobs:
       - uses: actions/checkout@v4
 
       - name: Export to Notion
-        run: |
-          docker run --rm \
-            -v "${{ github.workspace }}:/work" \
-            -e MDEX_NOTION_TOKEN="${{ secrets.MDEX_NOTION_TOKEN }}" \
-            -e MDEX_NOTION_DATABASE_ID="${{ secrets.MDEX_NOTION_DATABASE_ID }}" \
-            ghcr.io/m-mizutani/mdex:latest \
-            export --dir /work/docs
+        uses: docker://ghcr.io/m-mizutani/mdex:latest
+        with:
+          args: export --dir /github/workspace/docs
+        env:
+          MDEX_NOTION_TOKEN: ${{ secrets.MDEX_NOTION_TOKEN }}
+          MDEX_NOTION_DATABASE_ID: ${{ secrets.MDEX_NOTION_DATABASE_ID }}
 ```
+
+> **Note:** When using `uses: docker://...`, the repository is automatically mounted at `/github/workspace`.
 
 ## With Domain Scoping
 
@@ -43,13 +44,12 @@ Use `--domain` to share a single Notion database across multiple repositories:
 
 ```yaml
       - name: Export to Notion
-        run: |
-          docker run --rm \
-            -v "${{ github.workspace }}:/work" \
-            -e MDEX_NOTION_TOKEN="${{ secrets.MDEX_NOTION_TOKEN }}" \
-            -e MDEX_NOTION_DATABASE_ID="${{ secrets.MDEX_NOTION_DATABASE_ID }}" \
-            ghcr.io/m-mizutani/mdex:latest \
-            export --dir /work/docs --domain "${{ github.repository }}"
+        uses: docker://ghcr.io/m-mizutani/mdex:latest
+        with:
+          args: export --dir /github/workspace/docs --domain ${{ github.repository }}
+        env:
+          MDEX_NOTION_TOKEN: ${{ secrets.MDEX_NOTION_TOKEN }}
+          MDEX_NOTION_DATABASE_ID: ${{ secrets.MDEX_NOTION_DATABASE_ID }}
 ```
 
 This scopes pages by repository name (e.g., `m-mizutani/mdex`), so multiple repositories can write to the same database without interfering with each other.
@@ -73,13 +73,12 @@ jobs:
       - uses: actions/checkout@v4
 
       - name: Dry-run export
-        run: |
-          docker run --rm \
-            -v "${{ github.workspace }}:/work" \
-            -e MDEX_NOTION_TOKEN="${{ secrets.MDEX_NOTION_TOKEN }}" \
-            -e MDEX_NOTION_DATABASE_ID="${{ secrets.MDEX_NOTION_DATABASE_ID }}" \
-            ghcr.io/m-mizutani/mdex:latest \
-            export --dir /work/docs --dry-run
+        uses: docker://ghcr.io/m-mizutani/mdex:latest
+        with:
+          args: export --dir /github/workspace/docs --dry-run
+        env:
+          MDEX_NOTION_TOKEN: ${{ secrets.MDEX_NOTION_TOKEN }}
+          MDEX_NOTION_DATABASE_ID: ${{ secrets.MDEX_NOTION_DATABASE_ID }}
 ```
 
 ## Pinning a Specific Version
@@ -87,12 +86,12 @@ jobs:
 It is recommended to pin a specific version tag instead of `latest`:
 
 ```yaml
-          docker run --rm \
-            -v "${{ github.workspace }}:/work" \
-            -e MDEX_NOTION_TOKEN="${{ secrets.MDEX_NOTION_TOKEN }}" \
-            -e MDEX_NOTION_DATABASE_ID="${{ secrets.MDEX_NOTION_DATABASE_ID }}" \
-            ghcr.io/m-mizutani/mdex:0.1.0 \
-            export --dir /work/docs
+      - uses: docker://ghcr.io/m-mizutani/mdex:0.1.0
+        with:
+          args: export --dir /github/workspace/docs
+        env:
+          MDEX_NOTION_TOKEN: ${{ secrets.MDEX_NOTION_TOKEN }}
+          MDEX_NOTION_DATABASE_ID: ${{ secrets.MDEX_NOTION_DATABASE_ID }}
 ```
 
 ## Force Re-export
@@ -100,12 +99,13 @@ It is recommended to pin a specific version tag instead of `latest`:
 To re-export all files regardless of whether they have changed:
 
 ```yaml
-          docker run --rm \
-            -v "${{ github.workspace }}:/work" \
-            -e MDEX_NOTION_TOKEN="${{ secrets.MDEX_NOTION_TOKEN }}" \
-            -e MDEX_NOTION_DATABASE_ID="${{ secrets.MDEX_NOTION_DATABASE_ID }}" \
-            ghcr.io/m-mizutani/mdex:latest \
-            export --dir /work/docs --force
+      - name: Export to Notion
+        uses: docker://ghcr.io/m-mizutani/mdex:latest
+        with:
+          args: export --dir /github/workspace/docs --force
+        env:
+          MDEX_NOTION_TOKEN: ${{ secrets.MDEX_NOTION_TOKEN }}
+          MDEX_NOTION_DATABASE_ID: ${{ secrets.MDEX_NOTION_DATABASE_ID }}
 ```
 
 ## Complete Workflow Example
@@ -131,11 +131,10 @@ jobs:
       - uses: actions/checkout@v4
 
       - name: Export to Notion
-        run: |
-          docker run --rm \
-            -v "${{ github.workspace }}:/work" \
-            -e MDEX_NOTION_TOKEN="${{ secrets.MDEX_NOTION_TOKEN }}" \
-            -e MDEX_NOTION_DATABASE_ID="${{ secrets.MDEX_NOTION_DATABASE_ID }}" \
-            ghcr.io/m-mizutani/mdex:0.1.0 \
-            export --dir /work/docs --domain "${{ github.repository }}"
+        uses: docker://ghcr.io/m-mizutani/mdex:0.1.0
+        with:
+          args: export --dir /github/workspace/docs --domain ${{ github.repository }}
+        env:
+          MDEX_NOTION_TOKEN: ${{ secrets.MDEX_NOTION_TOKEN }}
+          MDEX_NOTION_DATABASE_ID: ${{ secrets.MDEX_NOTION_DATABASE_ID }}
 ```
