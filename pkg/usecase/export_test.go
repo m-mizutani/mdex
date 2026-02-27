@@ -44,6 +44,9 @@ func newMockFileScanner(files []domain.MarkdownFile) *mock.FileScannerMock {
 		ScanMarkdownFilesFunc: func(_ string) ([]domain.MarkdownFile, error) {
 			return files, nil
 		},
+		ReadMarkdownFilesFunc: func(_ []string) ([]domain.MarkdownFile, error) {
+			return files, nil
+		},
 	}
 }
 

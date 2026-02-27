@@ -39,4 +39,7 @@ type NotionClient interface {
 type FileScanner interface {
 	// ScanMarkdownFiles recursively scans the given directory and returns all Markdown files.
 	ScanMarkdownFiles(baseDir string) ([]MarkdownFile, error)
+
+	// ReadMarkdownFiles reads the specified Markdown files and returns them.
+	ReadMarkdownFiles(paths []string) ([]MarkdownFile, error)
 }
