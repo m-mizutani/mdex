@@ -155,6 +155,10 @@ Local image paths are resolved relative to the Markdown file's location.
    - **Skip** — Hash matches, no action needed
 5. **Execute** — Archive outdated pages, create new pages with blocks and images
 
+## Documentation
+
+- [Using mdex with GitHub Actions](docs/github-actions.md)
+
 ## License
 
 See [LICENSE](LICENSE) for details.
