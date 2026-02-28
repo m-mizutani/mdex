@@ -132,15 +132,22 @@ func convertImage(n *ast.Image, source []byte, mdFilePath string, imageBaseDir s
 
 	// Local image path resolution
 	var localPath string
+	var baseDir string
 	if imageBaseDir != "" && strings.HasPrefix(dest, "/") {
 		// Absolute path with imageBaseDir: resolve relative to imageBaseDir
+		baseDir = filepath.Clean(imageBaseDir)
 		localPath = filepath.Join(imageBaseDir, dest)
 	} else {
 		// Relative path or no imageBaseDir: resolve relative to the markdown file's directory
-		mdDir := filepath.Dir(mdFilePath)
-		localPath = filepath.Join(mdDir, dest)
+		baseDir = filepath.Clean(filepath.Dir(mdFilePath))
+		localPath = filepath.Join(baseDir, dest)
 	}
 	localPath = filepath.Clean(localPath)
+
+	// Prevent path traversal: ensure resolved path stays within the base directory
+	if !strings.HasPrefix(localPath, baseDir+string(filepath.Separator)) && localPath != baseDir {
+		return nil
+	}
 
 	// Store local path for later upload processing
 	return []Block{{

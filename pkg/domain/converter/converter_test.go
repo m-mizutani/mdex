@@ -129,6 +129,22 @@ func TestConvertLocalImageAbsolutePathWithoutImageBaseDir(t *testing.T) {
 	gt.V(t, img["local_path"]).Equal("/workspace/content/docs/photo.png")
 }
 
+func TestConvertLocalImagePathTraversalWithImageBaseDir(t *testing.T) {
+	md := "![alt](/../../etc/passwd)\n"
+	blocks, err := converter.Convert([]byte(md), "/workspace/content/docs/page.md", "/workspace/static")
+	gt.NoError(t, err)
+	// Path traversal should be blocked, resulting in no image block
+	gt.A(t, blocks).Length(0)
+}
+
+func TestConvertLocalImagePathTraversalRelative(t *testing.T) {
+	md := "![alt](../../../etc/passwd)\n"
+	blocks, err := converter.Convert([]byte(md), "/workspace/content/docs/page.md", "")
+	gt.NoError(t, err)
+	// Path traversal should be blocked
+	gt.A(t, blocks).Length(0)
+}
+
 func TestConvertExternalImage(t *testing.T) {
 	md := "![alt](https://example.com/image.png)\n"
 	blocks := helperConvert(t, md)
