@@ -43,6 +43,13 @@ jobs:
         with:
           args: "-no-fail -fmt sarif -exclude-generated -out results.sarif ./..."
 
+      - name: Fix SARIF relationships field
+        run: |
+          jq '(.runs[].tool.driver.rules // []) |= map(
+            if .relationships then .relationships |= map(select(type == "object")) else . end
+          )' results.sarif > results-fixed.sarif
+          mv results-fixed.sarif results.sarif
+
       - name: Upload SARIF file
         uses: github/codeql-action/upload-sarif@v3
         with:

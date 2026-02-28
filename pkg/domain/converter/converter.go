@@ -18,7 +18,9 @@ type Block map[string]interface{}
 
 // Convert parses Markdown content and converts it to Notion Block objects.
 // mdFilePath is the path of the markdown file, used to resolve relative image paths.
-func Convert(content []byte, mdFilePath string) ([]Block, error) {
+// imageBaseDir is the base directory for resolving absolute image paths (e.g., Hugo's static/ directory).
+// If imageBaseDir is empty, absolute paths are resolved relative to the markdown file's directory.
+func Convert(content []byte, mdFilePath string, imageBaseDir string) ([]Block, error) {
 	md := goldmark.New(
 		goldmark.WithExtensions(
 			extension.GFM,
@@ -34,27 +36,27 @@ func Convert(content []byte, mdFilePath string) ([]Block, error) {
 
 	var blocks []Block
 	for child := doc.FirstChild(); child != nil; child = child.NextSibling() {
-		converted := convertNode(child, content, mdFilePath)
+		converted := convertNode(child, content, mdFilePath, imageBaseDir)
 		blocks = append(blocks, converted...)
 	}
 
 	return blocks, nil
 }
 
-func convertNode(n ast.Node, source []byte, mdFilePath string) []Block {
+func convertNode(n ast.Node, source []byte, mdFilePath string, imageBaseDir string) []Block {
 	switch v := n.(type) {
 	case *ast.Heading:
 		return convertHeading(v, source)
 	case *ast.Paragraph:
-		return convertParagraph(v, source, mdFilePath)
+		return convertParagraph(v, source, mdFilePath, imageBaseDir)
 	case *ast.FencedCodeBlock:
 		return convertFencedCodeBlock(v, source)
 	case *ast.CodeBlock:
 		return convertCodeBlock(v, source)
 	case *ast.Blockquote:
-		return convertBlockquote(v, source, mdFilePath)
+		return convertBlockquote(v, source, mdFilePath, imageBaseDir)
 	case *ast.List:
-		return convertList(v, source, mdFilePath)
+		return convertList(v, source, mdFilePath, imageBaseDir)
 	case *ast.ThematicBreak:
 		return []Block{{"type": "divider", "divider": map[string]interface{}{}}}
 	case *east.Table:
@@ -63,7 +65,7 @@ func convertNode(n ast.Node, source []byte, mdFilePath string) []Block {
 		// For unknown block types, try converting children
 		var blocks []Block
 		for child := n.FirstChild(); child != nil; child = child.NextSibling() {
-			blocks = append(blocks, convertNode(child, source, mdFilePath)...)
+			blocks = append(blocks, convertNode(child, source, mdFilePath, imageBaseDir)...)
 		}
 		return blocks
 	}
@@ -91,11 +93,11 @@ func convertHeading(n *ast.Heading, source []byte) []Block {
 	}}
 }
 
-func convertParagraph(n *ast.Paragraph, source []byte, mdFilePath string) []Block {
+func convertParagraph(n *ast.Paragraph, source []byte, mdFilePath string, imageBaseDir string) []Block {
 	// Check if paragraph contains only an image
 	if n.ChildCount() == 1 {
 		if img, ok := n.FirstChild().(*ast.Image); ok {
-			return convertImage(img, source, mdFilePath)
+			return convertImage(img, source, mdFilePath, imageBaseDir)
 		}
 	}
 
@@ -112,7 +114,7 @@ func convertParagraph(n *ast.Paragraph, source []byte, mdFilePath string) []Bloc
 	}}
 }
 
-func convertImage(n *ast.Image, source []byte, mdFilePath string) []Block {
+func convertImage(n *ast.Image, source []byte, mdFilePath string, imageBaseDir string) []Block {
 	dest := string(n.Destination)
 
 	// Determine if external URL or local file
@@ -128,10 +130,24 @@ func convertImage(n *ast.Image, source []byte, mdFilePath string) []Block {
 		}}
 	}
 
-	// Local image: resolve relative to the markdown file's directory
-	mdDir := filepath.Dir(mdFilePath)
-	localPath := filepath.Join(mdDir, dest)
+	// Local image path resolution
+	var localPath string
+	var baseDir string
+	if imageBaseDir != "" && strings.HasPrefix(dest, "/") {
+		// Absolute path with imageBaseDir: resolve relative to imageBaseDir
+		baseDir = filepath.Clean(imageBaseDir)
+		localPath = filepath.Join(imageBaseDir, dest)
+	} else {
+		// Relative path or no imageBaseDir: resolve relative to the markdown file's directory
+		baseDir = filepath.Clean(filepath.Dir(mdFilePath))
+		localPath = filepath.Join(baseDir, dest)
+	}
 	localPath = filepath.Clean(localPath)
+
+	// Prevent path traversal: ensure resolved path stays within the base directory
+	if !strings.HasPrefix(localPath, baseDir+string(filepath.Separator)) && localPath != baseDir {
+		return nil
+	}
 
 	// Store local path for later upload processing
 	return []Block{{
@@ -192,7 +208,7 @@ func convertCodeBlock(n *ast.CodeBlock, source []byte) []Block {
 	}}
 }
 
-func convertBlockquote(n *ast.Blockquote, source []byte, mdFilePath string) []Block {
+func convertBlockquote(n *ast.Blockquote, source []byte, mdFilePath string, imageBaseDir string) []Block {
 	// Collect rich text from all paragraph children
 	var richTexts []RichText
 	for child := n.FirstChild(); child != nil; child = child.NextSibling() {
@@ -209,19 +225,19 @@ func convertBlockquote(n *ast.Blockquote, source []byte, mdFilePath string) []Bl
 	}}
 }
 
-func convertList(n *ast.List, source []byte, mdFilePath string) []Block {
+func convertList(n *ast.List, source []byte, mdFilePath string, imageBaseDir string) []Block {
 	var blocks []Block
 	for child := n.FirstChild(); child != nil; child = child.NextSibling() {
 		listItem, ok := child.(*ast.ListItem)
 		if !ok {
 			continue
 		}
-		blocks = append(blocks, convertListItem(listItem, n, source, mdFilePath)...)
+		blocks = append(blocks, convertListItem(listItem, n, source, mdFilePath, imageBaseDir)...)
 	}
 	return blocks
 }
 
-func convertListItem(item *ast.ListItem, list *ast.List, source []byte, mdFilePath string) []Block {
+func convertListItem(item *ast.ListItem, list *ast.List, source []byte, mdFilePath string, imageBaseDir string) []Block {
 	// Collect rich text from the first paragraph/text block
 	var richTexts []RichText
 	var childBlocks []Block
@@ -234,12 +250,12 @@ func convertListItem(item *ast.ListItem, list *ast.List, source []byte, mdFilePa
 			if len(richTexts) == 0 {
 				richTexts = append(richTexts, convertInlineChildren(v, source)...)
 			} else {
-				childBlocks = append(childBlocks, convertNode(v, source, mdFilePath)...)
+				childBlocks = append(childBlocks, convertNode(v, source, mdFilePath, imageBaseDir)...)
 			}
 		case *ast.List:
-			childBlocks = append(childBlocks, convertList(v, source, mdFilePath)...)
+			childBlocks = append(childBlocks, convertList(v, source, mdFilePath, imageBaseDir)...)
 		default:
-			childBlocks = append(childBlocks, convertNode(v, source, mdFilePath)...)
+			childBlocks = append(childBlocks, convertNode(v, source, mdFilePath, imageBaseDir)...)
 		}
 	}
 

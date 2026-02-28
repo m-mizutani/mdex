@@ -65,4 +65,5 @@ type ExportConfig struct {
 	Domain           string
 	DomainProperty   string
 	Force            bool
+	ImageBaseDir     string
 }
