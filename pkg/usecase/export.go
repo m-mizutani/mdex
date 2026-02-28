@@ -157,7 +157,7 @@ func (uc *ExportUseCase) createPage(ctx context.Context, config domain.ExportCon
 	}
 
 	// Convert markdown body (without frontmatter) to Notion blocks
-	blocks, err := converter.Convert(body, file.FilePath)
+	blocks, err := converter.Convert(body, file.FilePath, config.ImageBaseDir)
 	if err != nil {
 		return goerr.Wrap(err, "converting markdown", goerr.V("path", file.RelPath))
 	}

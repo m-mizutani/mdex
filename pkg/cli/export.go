@@ -29,6 +29,7 @@ func newExportCommand() *cli.Command {
 		domainProperty   string
 		force            bool
 		dryRun           bool
+		imageBaseDir     string
 	)
 
 	return &cli.Command{
@@ -118,6 +119,12 @@ func newExportCommand() *cli.Command {
 				Sources:     cli.EnvVars("MDEX_DRY_RUN"),
 				Destination: &dryRun,
 			},
+			&cli.StringFlag{
+				Name:        "image-base-dir",
+				Usage:       "Base directory for resolving absolute image paths (e.g., Hugo's static/ directory)",
+				Sources:     cli.EnvVars("MDEX_IMAGE_BASE_DIR"),
+				Destination: &imageBaseDir,
+			},
 		},
 		Action: func(ctx context.Context, _ *cli.Command) error {
 			if dir == "" && len(files) == 0 {
@@ -149,6 +156,7 @@ func newExportCommand() *cli.Command {
 				Domain:           domainValue,
 				DomainProperty:   domainProperty,
 				Force:            force,
+				ImageBaseDir:     imageBaseDir,
 			}
 
 			notionClient := notion.New(notionToken)

@@ -9,7 +9,7 @@ import (
 
 func helperConvert(t *testing.T, md string) []converter.Block {
 	t.Helper()
-	blocks, err := converter.Convert([]byte(md), "test.md")
+	blocks, err := converter.Convert([]byte(md), "test.md", "")
 	gt.NoError(t, err)
 	return blocks
 }
@@ -89,6 +89,44 @@ func TestConvertTaskList(t *testing.T) {
 	gt.V(t, todo0["checked"]).Equal(true)
 	todo1 := blocks[1]["to_do"].(map[string]interface{})
 	gt.V(t, todo1["checked"]).Equal(false)
+}
+
+func TestConvertLocalImageAbsolutePathWithImageBaseDir(t *testing.T) {
+	md := "![alt](/images/photo.png)\n"
+	blocks, err := converter.Convert([]byte(md), "/workspace/content/docs/page.md", "/workspace/static")
+	gt.NoError(t, err)
+	gt.A(t, blocks).Length(1)
+	gt.V(t, blocks[0]["type"]).Equal("image")
+
+	img := blocks[0]["image"].(map[string]interface{})
+	gt.V(t, img["type"]).Equal("file_upload")
+	gt.V(t, img["local_path"]).Equal("/workspace/static/images/photo.png")
+}
+
+func TestConvertLocalImageRelativePathWithImageBaseDir(t *testing.T) {
+	md := "![alt](./photo.png)\n"
+	blocks, err := converter.Convert([]byte(md), "/workspace/content/docs/page.md", "/workspace/static")
+	gt.NoError(t, err)
+	gt.A(t, blocks).Length(1)
+	gt.V(t, blocks[0]["type"]).Equal("image")
+
+	img := blocks[0]["image"].(map[string]interface{})
+	gt.V(t, img["type"]).Equal("file_upload")
+	// Relative path should still resolve relative to the markdown file's directory
+	gt.V(t, img["local_path"]).Equal("/workspace/content/docs/photo.png")
+}
+
+func TestConvertLocalImageAbsolutePathWithoutImageBaseDir(t *testing.T) {
+	md := "![alt](/photo.png)\n"
+	blocks, err := converter.Convert([]byte(md), "/workspace/content/docs/page.md", "")
+	gt.NoError(t, err)
+	gt.A(t, blocks).Length(1)
+	gt.V(t, blocks[0]["type"]).Equal("image")
+
+	img := blocks[0]["image"].(map[string]interface{})
+	gt.V(t, img["type"]).Equal("file_upload")
+	// Without imageBaseDir, absolute path resolves relative to markdown file's directory (backward compat)
+	gt.V(t, img["local_path"]).Equal("/workspace/content/docs/photo.png")
 }
 
 func TestConvertExternalImage(t *testing.T) {

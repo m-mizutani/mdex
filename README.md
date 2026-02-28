@@ -73,6 +73,7 @@ mdex export [flags]
 | `--domain-property` | `MDEX_DOMAIN_PROPERTY` | `Domain` | Property name for domain (select) |
 | `--force` | `MDEX_FORCE` | `false` | Re-export all files regardless of hash |
 | `--dry-run` | `MDEX_DRY_RUN` | `false` | Preview export plan without API calls |
+| `--image-base-dir` | `MDEX_IMAGE_BASE_DIR` | | Base directory for resolving absolute image paths |
 
 ## Frontmatter
 
@@ -141,7 +142,11 @@ If `--domain` is not specified, no domain property is created and all pages in t
 | Local file (PNG, JPEG, GIF, WebP) | Uploaded via Notion File Upload API |
 | Unsupported format (e.g., SVG) | Replaced with placeholder text |
 
-Local image paths are resolved relative to the Markdown file's location.
+Local image paths are resolved relative to the Markdown file's location. When `--image-base-dir` is specified, paths starting with `/` are resolved relative to that directory instead. This is useful for static site generators like Hugo, where `/image.png` refers to a file in the `static/` directory:
+
+```bash
+mdex export --dir ./content --image-base-dir ./static
+```
 
 ## How It Works
 
