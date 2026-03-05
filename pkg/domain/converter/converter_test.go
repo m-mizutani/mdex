@@ -64,6 +64,21 @@ func TestConvertBlockquote(t *testing.T) {
 	gt.V(t, blocks[0]["type"]).Equal("quote")
 }
 
+func TestConvertEmptyBlockquote(t *testing.T) {
+	md := ">\n"
+	blocks := helperConvert(t, md)
+	gt.A(t, blocks).Length(1)
+	gt.V(t, blocks[0]["type"]).Equal("quote")
+
+	quote := blocks[0]["quote"].(map[string]interface{})
+	richTexts := quote["rich_text"].([]converter.RichText)
+	// Must be non-nil empty slice (not null) so Notion API accepts it
+	if richTexts == nil {
+		t.Fatal("rich_text must not be nil (would serialize as null in JSON)")
+	}
+	gt.A(t, richTexts).Length(0)
+}
+
 func TestConvertHorizontalRule(t *testing.T) {
 	md := "---\n"
 	blocks := helperConvert(t, md)
