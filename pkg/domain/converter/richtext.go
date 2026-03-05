@@ -147,7 +147,7 @@ func makeRichText(text string, state *annotationState) RichText {
 // exceeds the Notion API limit of 2000 characters.
 func splitRichText(rts []RichText) []RichText {
 	const maxLen = 2000
-	var result []RichText
+	result := make([]RichText, 0)
 	for _, rt := range rts {
 		if rt.Text == nil || len(rt.Text.Content) <= maxLen {
 			result = append(result, rt)

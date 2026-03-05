@@ -7,6 +7,7 @@ import (
 
 	"github.com/m-mizutani/gt"
 	"github.com/m-mizutani/mdex/pkg/domain"
+	"github.com/m-mizutani/mdex/pkg/domain/converter"
 	"github.com/m-mizutani/mdex/pkg/infra/notion"
 )
 
@@ -301,4 +302,42 @@ func TestCreatePageWithManyBlocks(t *testing.T) {
 	gt.NoError(t, err).Required()
 	gt.S(t, page.ID).Equal(pageID)
 	gt.B(t, page.Archived).False()
+}
+
+func TestCreatePageWithEmptyBlockquote(t *testing.T) {
+	client, databaseID := setupClient(t)
+	ctx := context.Background()
+
+	titleProp, err := client.GetTitleProperty(ctx, databaseID)
+	gt.NoError(t, err).Required()
+
+	// Convert markdown containing an empty blockquote
+	md := "# Test Page\n\nSome text before.\n\n>\n\nSome text after.\n"
+	convertedBlocks, err := converter.Convert([]byte(md), "test.md", "")
+	gt.NoError(t, err).Required()
+
+	properties := map[string]interface{}{
+		titleProp: map[string]interface{}{
+			"title": []map[string]interface{}{
+				{
+					"type": "text",
+					"text": map[string]interface{}{
+						"content": "mdex empty blockquote test",
+					},
+				},
+			},
+		},
+	}
+
+	// Convert []converter.Block to []interface{}
+	blocks := make([]interface{}, len(convertedBlocks))
+	for i, b := range convertedBlocks {
+		blocks[i] = b
+	}
+
+	// This should succeed without "rich_text should be an array, instead was null" error
+	pageID, err := client.CreatePage(ctx, databaseID, properties, blocks)
+	gt.NoError(t, err).Required()
+	gt.S(t, pageID).IsNotEmpty()
+	cleanupPage(t, client, pageID)
 }

@@ -20,7 +20,7 @@ jobs:
 
       - id: scan
         name: Run Trivy vulnerability scanner
-        uses: aquasecurity/trivy-action@0.28.0
+        uses: aquasecurity/trivy-action@0.34.2
         with:
           scan-type: "fs"
           ignore-unfixed: true
@@ -32,7 +32,12 @@ jobs:
 
       - name: Display vulnerabilities found
         if: failure() && steps.scan.outcome == 'failure'
-        run: trivy fs --format table --ignore-unfixed .
+        uses: aquasecurity/trivy-action@0.34.2
+        with:
+          scan-type: "fs"
+          ignore-unfixed: true
+          format: "table"
+          exit-code: 0
         env:
           TRIVY_DB_REPOSITORY: public.ecr.aws/aquasecurity/trivy-db
 
